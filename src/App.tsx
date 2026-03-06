@@ -1,168 +1,239 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+import { useMemo, useState } from 'react';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import confetti from 'canvas-confetti';
-import { Trophy, Sparkles, RefreshCw } from 'lucide-react';
+type TopMenuKey = 'modern' | 'nature' | 'night';
+type SideMenuItem = {
+  id: string;
+  title: string;
+  description: string;
+  visual: {
+    badge: string;
+    heading: string;
+    text: string;
+    palette: string;
+    image: string;
+  };
+};
 
-const TURKISH_NAMES = [
-  "Ahmet Yılmaz", "Mehmet Demir", "Ayşe Kaya", "Fatma Çelik", "Mustafa Şahin",
-  "Emine Yıldız", "Ali Öztürk", "Hatice Aydın", "Hüseyin Özdemir", "Zeynep Arslan",
-  "Murat Doğan", "Elif Kılıç", "İbrahim Aslan", "Meryem Çetin", "Hasan Kara",
-  "Zehra Koç", "Osman Kurt", "Özlem Özkan", "Yusuf Şimşek", "Arzu Polat",
-  "Ömer Çakır", "Dilek Erdem", "Ramazan Aksoy", "Filiz Yavuz", "Halil Uzun",
-  "Sibel Bulut", "Süleyman Günay", "Ebru Aktaş", "İsmail Güneş", "Yasemin Işık",
-  "Caner Tekin", "Selin Yılmaz", "Burak Deniz", "Gizem Akçay", "Mert Soylu"
+const topMenus: { key: TopMenuKey; label: string }[] = [
+  { key: 'modern', label: 'Modern' },
+  { key: 'nature', label: 'Doğa' },
+  { key: 'night', label: 'Gece' },
 ];
 
-const WINNER_NAME = "Kadir Eren Yeniçeri";
+const sideMenusByTheme: Record<TopMenuKey, SideMenuItem[]> = {
+  modern: [
+    {
+      id: 'hero',
+      title: 'Hero Alanı',
+      description: 'Ana mesajın bulunduğu üst bölüm. Tıklayınca kart görseli değişir.',
+      visual: {
+        badge: 'MODERN / HERO',
+        heading: 'Temiz ve güçlü bir açılış alanı',
+        text: 'Marka vurgusunu ilk bakışta öne çıkaran yalın düzen.',
+        palette: 'palette-modern-1',
+        image:
+          'https://images.unsplash.com/photo-1518773553398-650c184e0bb3?auto=format&fit=crop&w=1200&q=80',
+      },
+    },
+    {
+      id: 'cards',
+      title: 'Servis Kartları',
+      description: 'Ürün veya hizmet maddelerini kart yapısında sunan bölüm.',
+      visual: {
+        badge: 'MODERN / KARTLAR',
+        heading: 'Grid düzen ile net hizmet sunumu',
+        text: 'Ziyaretçinin hızlı karar vermesi için sade kart yapıları.',
+        palette: 'palette-modern-2',
+        image:
+          'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=1200&q=80',
+      },
+    },
+    {
+      id: 'cta',
+      title: 'Çağrı Alanı',
+      description: 'Kullanıcıyı kayıt veya iletişim aksiyonuna yönlendiren bölüm.',
+      visual: {
+        badge: 'MODERN / CTA',
+        heading: 'Dönüşüm odaklı eylem mesajı',
+        text: 'Vurucu buton ve kısa metin ile ziyaretçiyi aksiyona taşıyın.',
+        palette: 'palette-modern-3',
+        image:
+          'https://images.unsplash.com/photo-1553877522-43269d4ea984?auto=format&fit=crop&w=1200&q=80',
+      },
+    },
+  ],
+  nature: [
+    {
+      id: 'mountain',
+      title: 'Dağ Manzarası',
+      description: 'Sakin ve güven veren giriş hissi için doğal tonlar.',
+      visual: {
+        badge: 'DOĞA / DAĞ',
+        heading: 'Ferah, organik ve yumuşak geçişler',
+        text: 'Markaya doğallık ve sadelik hissi kazandıran görsel yaklaşım.',
+        palette: 'palette-nature-1',
+        image:
+          'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80',
+      },
+    },
+    {
+      id: 'forest',
+      title: 'Orman Doku',
+      description: 'Arka planlarda detaylı ama gözü yormayan doğal dokular.',
+      visual: {
+        badge: 'DOĞA / ORMAN',
+        heading: 'Derinlik veren yeşil katmanlar',
+        text: 'Bilgi bölümlerinde sakin bir okuma deneyimi oluşturur.',
+        palette: 'palette-nature-2',
+        image:
+          'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80',
+      },
+    },
+    {
+      id: 'lake',
+      title: 'Göl Kompozisyonu',
+      description: 'Kurumsal sunumlarda dengeli ve premium bir atmosfer sağlar.',
+      visual: {
+        badge: 'DOĞA / GÖL',
+        heading: 'Dinginlik odaklı geniş görsel alan',
+        text: 'Kısa başlık + net CTA ile modern bir doğa teması.',
+        palette: 'palette-nature-3',
+        image:
+          'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
+      },
+    },
+  ],
+  night: [
+    {
+      id: 'city',
+      title: 'Şehir Işıkları',
+      description: 'Teknoloji veya yazılım ürünleri için güçlü gece stili.',
+      visual: {
+        badge: 'GECE / ŞEHİR',
+        heading: 'Kontrastı yüksek premium görünüm',
+        text: 'Parlak vurgu renkleri ile dikkat çeken kart kompozisyonu.',
+        palette: 'palette-night-1',
+        image:
+          'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1200&q=80',
+      },
+    },
+    {
+      id: 'neon',
+      title: 'Neon Vurgu',
+      description: 'Lansman sayfalarında enerjik bir hava katmak için ideal.',
+      visual: {
+        badge: 'GECE / NEON',
+        heading: 'Dinamik ve genç bir kimlik',
+        text: 'Neon çizgilerle modern aksanlar oluşturan vitrin düzeni.',
+        palette: 'palette-night-2',
+        image:
+          'https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=1200&q=80',
+      },
+    },
+    {
+      id: 'minimal',
+      title: 'Koyu Minimal',
+      description: 'Kurumsal sitelerde yalın ama güçlü görünüm isteyenler için.',
+      visual: {
+        badge: 'GECE / MİNİMAL',
+        heading: 'Tipografi odaklı sessiz güç',
+        text: 'Az öğe ile yüksek etki sunan modern gece yaklaşımı.',
+        palette: 'palette-night-3',
+        image:
+          'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1200&q=80',
+      },
+    },
+  ],
+};
 
 export default function App() {
-  const [currentName, setCurrentName] = useState<string>("Çekiliş Bekleniyor...");
-  const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [winner, setWinner] = useState<string | null>(null);
+  const [activeTopMenu, setActiveTopMenu] = useState<TopMenuKey>('modern');
+  const [activeSideMenuId, setActiveSideMenuId] = useState<string>(sideMenusByTheme.modern[0].id);
+  const [openDescriptionId, setOpenDescriptionId] = useState<string | null>(sideMenusByTheme.modern[0].id);
 
-  const startRaffle = useCallback(() => {
-    if (isRunning) return;
+  const activeSideMenus = sideMenusByTheme[activeTopMenu];
 
-    setIsRunning(true);
-    setWinner(null);
-    
-    let duration = 3000; // 3 seconds
-    let intervalTime = 80;
-    let startTime = Date.now();
+  const activeVisual = useMemo(() => {
+    return (
+      activeSideMenus.find((item) => item.id === activeSideMenuId)?.visual ?? activeSideMenus[0].visual
+    );
+  }, [activeSideMenuId, activeSideMenus]);
 
-    const interval = setInterval(() => {
-      const randomIndex = Math.floor(Math.random() * TURKISH_NAMES.length);
-      setCurrentName(TURKISH_NAMES[randomIndex]);
+  const handleTopMenuClick = (menuKey: TopMenuKey) => {
+    const firstItem = sideMenusByTheme[menuKey][0];
+    setActiveTopMenu(menuKey);
+    setActiveSideMenuId(firstItem.id);
+    setOpenDescriptionId(firstItem.id);
+  };
 
-      // Speed up or slow down effect could be added here, but simple is fine
-      if (Date.now() - startTime > duration) {
-        clearInterval(interval);
-        setCurrentName(WINNER_NAME);
-        setWinner(WINNER_NAME);
-        setIsRunning(false);
-        
-        // Trigger Confetti
-        const end = Date.now() + (3 * 1000);
-        const colors = ['#f43f5e', '#10b981', '#3b82f6', '#f59e0b'];
+  const handleSideMenuClick = (itemId: string) => {
+    setActiveSideMenuId(itemId);
+    setOpenDescriptionId((prev) => (prev === itemId ? null : itemId));
+  };
 
-        (function frame() {
-          confetti({
-            particleCount: 3,
-            angle: 60,
-            spread: 55,
-            origin: { x: 0 },
-            colors: colors
-          });
-          confetti({
-            particleCount: 3,
-            angle: 120,
-            spread: 55,
-            origin: { x: 1 },
-            colors: colors
-          });
-
-          if (Date.now() < end) {
-            requestAnimationFrame(frame);
-          }
-        }());
-      }
-    }, intervalTime);
-  }, [isRunning]);
+  const setFromVisualPanel = (itemId: string) => {
+    setActiveSideMenuId(itemId);
+    setOpenDescriptionId(itemId);
+  };
 
   return (
-    <div className="min-h-screen bg-[#fafaf9] text-[#1c1917] font-sans selection:bg-emerald-100 flex flex-col items-center justify-center p-6">
-      {/* Background Decorative Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-20">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-200 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200 rounded-full blur-[120px]" />
-      </div>
-
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 w-full max-w-2xl bg-white border border-[#e7e5e4] rounded-[32px] shadow-2xl shadow-black/5 overflow-hidden"
-      >
-        {/* Header */}
-        <div className="p-8 border-b border-[#f5f5f4] flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Büyük Çekiliş</h1>
-            <p className="text-sm text-[#78716c] mt-1">Şanslı kazananı belirlemek için butona basın.</p>
-          </div>
-          <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
-            <Trophy size={24} />
-          </div>
-        </div>
-
-        {/* Display Area */}
-        <div className="p-12 flex flex-col items-center justify-center min-h-[300px] bg-gradient-to-b from-white to-[#fafaf9]">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentName}
-              initial={{ opacity: 0, scale: 0.9, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 1.1, y: -10 }}
-              transition={{ duration: 0.1 }}
-              className={`text-4xl md:text-6xl font-bold text-center tracking-tighter ${
-                winner ? 'text-emerald-600' : 'text-[#1c1917]'
-              }`}
+    <main className="page">
+      <section className="demo-layout">
+        <header className="top-menu">
+          {topMenus.map((menu) => (
+            <button
+              key={menu.key}
+              type="button"
+              onClick={() => handleTopMenuClick(menu.key)}
+              className={menu.key === activeTopMenu ? 'menu-btn is-active' : 'menu-btn'}
             >
-              {currentName}
-            </motion.div>
-          </AnimatePresence>
+              {menu.label}
+            </button>
+          ))}
+        </header>
 
-          {winner && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="mt-8 flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium"
-            >
-              <Sparkles size={16} />
-              Tebrikler! Kazanan Belirlendi
-            </motion.div>
-          )}
+        <div className="content">
+          <aside className="side-menu">
+            {activeSideMenus.map((item) => {
+              const isActive = item.id === activeSideMenuId;
+              const isOpen = item.id === openDescriptionId;
+
+              return (
+                <div key={item.id} className={isActive ? 'side-item is-active' : 'side-item'}>
+                  <button type="button" className="side-btn" onClick={() => handleSideMenuClick(item.id)}>
+                    <span>{item.title}</span>
+                    <span className={isOpen ? 'chevron is-open' : 'chevron'}>⌄</span>
+                  </button>
+                  {isOpen && <p className="dropdown-text">{item.description}</p>}
+                </div>
+              );
+            })}
+          </aside>
+
+          <article className={`visual-card ${activeVisual.palette}`}>
+            <img src={activeVisual.image} alt={activeVisual.heading} className="visual-image" />
+            <div className="visual-overlay" />
+            <div className="visual-content">
+              <small>{activeVisual.badge}</small>
+              <h1>{activeVisual.heading}</h1>
+              <p>{activeVisual.text}</p>
+
+              <div className="visual-actions">
+                {activeSideMenus.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setFromVisualPanel(item.id)}
+                    className={item.id === activeSideMenuId ? 'chip-btn is-active' : 'chip-btn'}
+                  >
+                    {item.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </article>
         </div>
-
-        {/* Action Area */}
-        <div className="p-8 bg-white border-t border-[#f5f5f4] flex justify-center">
-          <button
-            onClick={startRaffle}
-            disabled={isRunning}
-            className={`
-              relative group px-10 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 flex items-center gap-3
-              ${isRunning 
-                ? 'bg-[#f5f5f4] text-[#a8a29e] cursor-not-allowed' 
-                : 'bg-[#1c1917] text-white hover:bg-black hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-black/10'
-              }
-            `}
-          >
-            {isRunning ? (
-              <>
-                <RefreshCw size={20} className="animate-spin" />
-                Çekiliş Yapılıyor...
-              </>
-            ) : (
-              <>
-                {winner ? 'Tekrar Çek' : 'Çekilişi Başlat'}
-              </>
-            )}
-          </button>
-        </div>
-      </motion.div>
-
-      {/* Footer Info */}
-      <motion.p 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="mt-8 text-xs text-[#a8a29e] uppercase tracking-[0.2em] font-medium"
-      >
-        © 2026 LİMONSOFT ÖZEL ÇEKİLİŞ SİSTEMİ
-      </motion.p>
-    </div>
+      </section>
+    </main>
   );
 }
